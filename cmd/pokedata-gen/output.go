@@ -22,6 +22,10 @@ var viewsSQL string
 
 var createTableRe = regexp.MustCompile(`(?m)^CREATE TABLE (\w+)`)
 
+// identRe limita los nombres de tabla y columna que se interpolan en el SQL
+// generado; los valores siempre van como parámetros o pasan por sqlLiteral.
+var identRe = regexp.MustCompile(`^[a-z_][a-z0-9_]*$`)
+
 // orderedTables devuelve las tablas en el orden del esquema (respeta las FK)
 // y comprueba que esquema y datos coinciden.
 func orderedTables(ds *Dataset) ([]*Table, error) {
@@ -32,6 +36,9 @@ func orderedTables(ds *Dataset) ([]*Table, error) {
 		if !ok {
 			return nil, fmt.Errorf("la tabla %s del esquema no tiene datos", m[1])
 		}
+		if err := checkIdents(t); err != nil {
+			return nil, err
+		}
 		seen[m[1]] = true
 		out = append(out, t)
 	}
@@ -41,6 +48,18 @@ func orderedTables(ds *Dataset) ([]*Table, error) {
 		}
 	}
 	return out, nil
+}
+
+func checkIdents(t *Table) error {
+	if !identRe.MatchString(t.Name) {
+		return fmt.Errorf("nombre de tabla no válido: %q", t.Name)
+	}
+	for _, c := range t.Cols {
+		if !identRe.MatchString(c) {
+			return fmt.Errorf("%s: nombre de columna no válido: %q", t.Name, c)
+		}
+	}
+	return nil
 }
 
 func batchSize(t *Table) int {
@@ -127,7 +146,8 @@ func insertTable(tx *sql.Tx, t *Table) error {
 		if n == bs && full != nil {
 			stmt = full
 		} else {
-			stmt, err = tx.Prepare(prefix + strings.TrimSuffix(strings.Repeat(one+",", n), ","))
+			// Solo se interpolan identificadores validados en orderedTables; los valores van como "?".
+			stmt, err = tx.Prepare(prefix + strings.TrimSuffix(strings.Repeat(one+",", n), ",")) // NOSONAR go:S2077
 			if err != nil {
 				return err
 			}
