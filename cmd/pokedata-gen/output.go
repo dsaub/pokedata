@@ -3,7 +3,7 @@ package main
 import (
 	"bufio"
 	"database/sql"
-	_ "embed"
+	_ "embed" // necesario para las directivas //go:embed de los .sql
 	"fmt"
 	"os"
 	"regexp"
@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	_ "modernc.org/sqlite"
+	_ "modernc.org/sqlite" // registra el driver "sqlite" para database/sql
 )
 
 //go:embed sql/schema.sql
@@ -237,26 +237,7 @@ func writeSQLFile(path string, tables []*Table) error {
 	fmt.Fprintln(w, "BEGIN TRANSACTION;")
 	fmt.Fprintln(w, schemaSQL)
 	for _, t := range tables {
-		bs := batchSize(t)
-		prefix := "INSERT INTO " + t.Name + " (" + strings.Join(t.Cols, ", ") + ") VALUES\n"
-		for i := 0; i < len(t.Rows); i += bs {
-			end := min(i+bs, len(t.Rows))
-			w.WriteString(prefix)
-			for j, r := range t.Rows[i:end] {
-				w.WriteByte('(')
-				for k, v := range r {
-					if k > 0 {
-						w.WriteByte(',')
-					}
-					w.WriteString(sqlLiteral(v))
-				}
-				if i+j == end-1 {
-					w.WriteString(");\n")
-				} else {
-					w.WriteString("),\n")
-				}
-			}
-		}
+		writeInserts(w, t)
 	}
 	fmt.Fprintln(w, viewsSQL)
 	fmt.Fprintln(w, "COMMIT;")
@@ -265,6 +246,36 @@ func writeSQLFile(path string, tables []*Table) error {
 		return err
 	}
 	return f.Close()
+}
+
+// writeInserts escribe las filas de la tabla en INSERT de batchSize filas.
+func writeInserts(w *bufio.Writer, t *Table) {
+	bs := batchSize(t)
+	prefix := "INSERT INTO " + t.Name + " (" + strings.Join(t.Cols, ", ") + ") VALUES\n"
+	for i := 0; i < len(t.Rows); i += bs {
+		end := min(i+bs, len(t.Rows))
+		w.WriteString(prefix)
+		for j, r := range t.Rows[i:end] {
+			writeValues(w, r)
+			if i+j == end-1 {
+				w.WriteString(";\n")
+			} else {
+				w.WriteString(",\n")
+			}
+		}
+	}
+}
+
+// writeValues escribe una fila como "(v1,v2,...)".
+func writeValues(w *bufio.Writer, r []any) {
+	w.WriteByte('(')
+	for k, v := range r {
+		if k > 0 {
+			w.WriteByte(',')
+		}
+		w.WriteString(sqlLiteral(v))
+	}
+	w.WriteByte(')')
 }
 
 func sqlLiteral(v any) string {

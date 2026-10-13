@@ -2,13 +2,50 @@ package main
 
 // Metadatos de líderes y gimnasios que no vienen en las fuentes de equipos.
 
+// Identificadores que se repiten en varias tablas de este fichero.
+const (
+	leaderLtSurge     = "lt-surge"
+	leaderCrasherWake = "crasher-wake"
+
+	gymPewter    = "pewter-gym"
+	gymCerulean  = "cerulean-gym"
+	gymVermilion = "vermilion-gym"
+	gymCeladon   = "celadon-gym"
+	gymFuchsia   = "fuchsia-gym"
+	gymSaffron   = "saffron-gym"
+	gymCinnabar  = "cinnabar-gym"
+	gymViridian  = "viridian-gym"
+
+	gymOreburgh  = "oreburgh-gym"
+	gymEterna    = "eterna-gym"
+	gymVeilstone = "veilstone-gym"
+	gymPastoria  = "pastoria-gym"
+	gymHearthome = "hearthome-gym"
+	gymCanalave  = "canalave-gym"
+	gymSnowpoint = "snowpoint-gym"
+	gymSunyshore = "sunyshore-gym"
+
+	gymStriaton   = "striaton-gym"
+	gymCastelia   = "castelia-gym"
+	gymNimbasa    = "nimbasa-gym"
+	gymDriftveil  = "driftveil-gym"
+	gymMistralton = "mistralton-gym"
+	gymOpelucid   = "opelucid-gym"
+
+	gymStowOnSide = "stow-on-side-stadium"
+	gymCirchester = "circhester-stadium"
+
+	notePostGame  = "Kanto (post-game)"
+	noteFreeOrder = "Orden libre; orden por nivel"
+)
+
 type leaderDef struct{ id, en, es, gender string }
 
 var leaderDefs = []leaderDef{
 	// Kanto
 	{"brock", "Brock", "Brock", "M"},
 	{"misty", "Misty", "Misty", "F"},
-	{"lt-surge", "Lt. Surge", "Lt. Surge", "M"},
+	{leaderLtSurge, "Lt. Surge", "Lt. Surge", "M"},
 	{"erika", "Erika", "Erika", "F"},
 	{"koga", "Koga", "Koga", "M"},
 	{"sabrina", "Sabrina", "Sabrina", "F"},
@@ -39,7 +76,7 @@ var leaderDefs = []leaderDef{
 	{"roark", "Roark", "Roco", "M"},
 	{"gardenia", "Gardenia", "Gardenia", "F"},
 	{"maylene", "Maylene", "Brega", "F"},
-	{"crasher-wake", "Crasher Wake", "Mananti", "M"},
+	{leaderCrasherWake, "Crasher Wake", "Mananti", "M"},
 	{"fantina", "Fantina", "Fantina", "F"},
 	{"byron", "Byron", "Acerón", "M"},
 	{"candice", "Candice", "Inverna", "F"},
@@ -94,14 +131,14 @@ var leaderDefs = []leaderDef{
 type gymDef struct{ id, city, location, region, badge string }
 
 var gymDefs = []gymDef{
-	{"pewter-gym", "Pewter City", "pewter-city", "kanto", "Boulder Badge"},
-	{"cerulean-gym", "Cerulean City", "cerulean-city", "kanto", "Cascade Badge"},
-	{"vermilion-gym", "Vermilion City", "vermilion-city", "kanto", "Thunder Badge"},
-	{"celadon-gym", "Celadon City", "celadon-city", "kanto", "Rainbow Badge"},
-	{"fuchsia-gym", "Fuchsia City", "fuchsia-city", "kanto", "Soul Badge"},
-	{"saffron-gym", "Saffron City", "saffron-city", "kanto", "Marsh Badge"},
-	{"cinnabar-gym", "Cinnabar Island", "cinnabar-island", "kanto", "Volcano Badge"},
-	{"viridian-gym", "Viridian City", "viridian-city", "kanto", "Earth Badge"},
+	{gymPewter, "Pewter City", "pewter-city", "kanto", "Boulder Badge"},
+	{gymCerulean, "Cerulean City", "cerulean-city", "kanto", "Cascade Badge"},
+	{gymVermilion, "Vermilion City", "vermilion-city", "kanto", "Thunder Badge"},
+	{gymCeladon, "Celadon City", "celadon-city", "kanto", "Rainbow Badge"},
+	{gymFuchsia, "Fuchsia City", "fuchsia-city", "kanto", "Soul Badge"},
+	{gymSaffron, "Saffron City", "saffron-city", "kanto", "Marsh Badge"},
+	{gymCinnabar, "Cinnabar Island", "cinnabar-island", "kanto", "Volcano Badge"},
+	{gymViridian, "Viridian City", "viridian-city", "kanto", "Earth Badge"},
 
 	{"violet-gym", "Violet City", "violet-city", "johto", "Zephyr Badge"},
 	{"azalea-gym", "Azalea Town", "azalea-town", "johto", "Hive Badge"},
@@ -121,23 +158,23 @@ var gymDefs = []gymDef{
 	{"mossdeep-gym", "Mossdeep City", "mossdeep-city", "hoenn", "Mind Badge"},
 	{"sootopolis-gym", "Sootopolis City", "sootopolis-city", "hoenn", "Rain Badge"},
 
-	{"oreburgh-gym", "Oreburgh City", "oreburgh-city", "sinnoh", "Coal Badge"},
-	{"eterna-gym", "Eterna City", "eterna-city", "sinnoh", "Forest Badge"},
-	{"veilstone-gym", "Veilstone City", "veilstone-city", "sinnoh", "Cobble Badge"},
-	{"pastoria-gym", "Pastoria City", "pastoria-city", "sinnoh", "Fen Badge"},
-	{"hearthome-gym", "Hearthome City", "hearthome-city", "sinnoh", "Relic Badge"},
-	{"canalave-gym", "Canalave City", "canalave-city", "sinnoh", "Mine Badge"},
-	{"snowpoint-gym", "Snowpoint City", "snowpoint-city", "sinnoh", "Icicle Badge"},
-	{"sunyshore-gym", "Sunyshore City", "sunyshore-city", "sinnoh", "Beacon Badge"},
+	{gymOreburgh, "Oreburgh City", "oreburgh-city", "sinnoh", "Coal Badge"},
+	{gymEterna, "Eterna City", "eterna-city", "sinnoh", "Forest Badge"},
+	{gymVeilstone, "Veilstone City", "veilstone-city", "sinnoh", "Cobble Badge"},
+	{gymPastoria, "Pastoria City", "pastoria-city", "sinnoh", "Fen Badge"},
+	{gymHearthome, "Hearthome City", "hearthome-city", "sinnoh", "Relic Badge"},
+	{gymCanalave, "Canalave City", "canalave-city", "sinnoh", "Mine Badge"},
+	{gymSnowpoint, "Snowpoint City", "snowpoint-city", "sinnoh", "Icicle Badge"},
+	{gymSunyshore, "Sunyshore City", "sunyshore-city", "sinnoh", "Beacon Badge"},
 
-	{"striaton-gym", "Striaton City", "striaton-city", "unova", "Trio Badge"},
+	{gymStriaton, "Striaton City", "striaton-city", "unova", "Trio Badge"},
 	{"nacrene-gym", "Nacrene City", "nacrene-city", "unova", "Basic Badge"},
-	{"castelia-gym", "Castelia City", "castelia-city", "unova", "Insect Badge"},
-	{"nimbasa-gym", "Nimbasa City", "nimbasa-city", "unova", "Bolt Badge"},
-	{"driftveil-gym", "Driftveil City", "driftveil-city", "unova", "Quake Badge"},
-	{"mistralton-gym", "Mistralton City", "mistralton-city", "unova", "Jet Badge"},
+	{gymCastelia, "Castelia City", "castelia-city", "unova", "Insect Badge"},
+	{gymNimbasa, "Nimbasa City", "nimbasa-city", "unova", "Bolt Badge"},
+	{gymDriftveil, "Driftveil City", "driftveil-city", "unova", "Quake Badge"},
+	{gymMistralton, "Mistralton City", "mistralton-city", "unova", "Jet Badge"},
 	{"icirrus-gym", "Icirrus City", "icirrus-city", "unova", "Freeze Badge"},
-	{"opelucid-gym", "Opelucid City", "opelucid-city", "unova", "Legend Badge"},
+	{gymOpelucid, "Opelucid City", "opelucid-city", "unova", "Legend Badge"},
 	{"aspertia-gym", "Aspertia City", "aspertia-city", "unova", "Basic Badge"},
 	{"virbank-gym", "Virbank City", "virbank-city", "unova", "Toxic Badge"},
 	{"humilau-gym", "Humilau City", "humilau-city", "unova", "Wave Badge"},
@@ -154,9 +191,9 @@ var gymDefs = []gymDef{
 	{"turffield-stadium", "Turffield", "turffield", "galar", "Grass Badge"},
 	{"hulbury-stadium", "Hulbury", "hulbury", "galar", "Water Badge"},
 	{"motostoke-stadium", "Motostoke", "motostoke", "galar", "Fire Badge"},
-	{"stow-on-side-stadium", "Stow-on-Side", "stow-on-side", "galar", "Fighting Badge"},
+	{gymStowOnSide, "Stow-on-Side", "stow-on-side", "galar", "Fighting Badge"},
 	{"ballonlea-stadium", "Ballonlea", "ballonlea", "galar", "Fairy Badge"},
-	{"circhester-stadium", "Circhester", "circhester", "galar", "Rock Badge"},
+	{gymCirchester, "Circhester", "circhester", "galar", "Rock Badge"},
 	{"spikemuth-gym", "Spikemuth", "spikemuth", "galar", "Dark Badge"},
 	{"hammerlocke-stadium", "Hammerlocke", "hammerlocke", "galar", "Dragon Badge"},
 
@@ -181,14 +218,14 @@ type slotDef struct {
 }
 
 var kantoSlots = []slotDef{
-	{"brock", "pewter-gym", 1, "rock", "", "", ""},
-	{"misty", "cerulean-gym", 2, "water", "", "", ""},
-	{"lt-surge", "vermilion-gym", 3, "electric", "", "", ""},
-	{"erika", "celadon-gym", 4, "grass", "", "", ""},
-	{"koga", "fuchsia-gym", 5, "poison", "", "", ""},
-	{"sabrina", "saffron-gym", 6, "psychic", "", "", ""},
-	{"blaine", "cinnabar-gym", 7, "fire", "", "", ""},
-	{"giovanni", "viridian-gym", 8, "ground", "", "", ""},
+	{"brock", gymPewter, 1, "rock", "", "", ""},
+	{"misty", gymCerulean, 2, "water", "", "", ""},
+	{leaderLtSurge, gymVermilion, 3, "electric", "", "", ""},
+	{"erika", gymCeladon, 4, "grass", "", "", ""},
+	{"koga", gymFuchsia, 5, "poison", "", "", ""},
+	{"sabrina", gymSaffron, 6, "psychic", "", "", ""},
+	{"blaine", gymCinnabar, 7, "fire", "", "", ""},
+	{"giovanni", gymViridian, 8, "ground", "", "", ""},
 }
 
 var johtoSlots = []slotDef{
@@ -201,14 +238,14 @@ var johtoSlots = []slotDef{
 	{"pryce", "mahogany-gym", 7, "ice", "", "", ""},
 	{"clair", "blackthorn-gym", 8, "dragon", "", "", ""},
 	// Kanto en GSC/HGSS: medallas 9-16
-	{"brock", "pewter-gym", 9, "rock", "", "", "Kanto (post-game)"},
-	{"misty", "cerulean-gym", 10, "water", "", "", "Kanto (post-game)"},
-	{"lt-surge", "vermilion-gym", 11, "electric", "", "", "Kanto (post-game)"},
-	{"erika", "celadon-gym", 12, "grass", "", "", "Kanto (post-game)"},
-	{"janine", "fuchsia-gym", 13, "poison", "", "", "Kanto (post-game)"},
-	{"sabrina", "saffron-gym", 14, "psychic", "", "", "Kanto (post-game)"},
-	{"blaine", "cinnabar-gym", 15, "fire", "", "", "Kanto (post-game); el gimnasio está en las Islas Espuma"},
-	{"blue", "viridian-gym", 16, "", "", "", "Kanto (post-game)"},
+	{"brock", gymPewter, 9, "rock", "", "", notePostGame},
+	{"misty", gymCerulean, 10, "water", "", "", notePostGame},
+	{leaderLtSurge, gymVermilion, 11, "electric", "", "", notePostGame},
+	{"erika", gymCeladon, 12, "grass", "", "", notePostGame},
+	{"janine", gymFuchsia, 13, "poison", "", "", notePostGame},
+	{"sabrina", gymSaffron, 14, "psychic", "", "", notePostGame},
+	{"blaine", gymCinnabar, 15, "fire", "", "", notePostGame + "; el gimnasio está en las Islas Espuma"},
+	{"blue", gymViridian, 16, "", "", "", notePostGame},
 }
 
 func hoennSlots(champ string) []slotDef {
@@ -225,25 +262,25 @@ func hoennSlots(champ string) []slotDef {
 }
 
 var dpSlots = []slotDef{
-	{"roark", "oreburgh-gym", 1, "rock", "", "", ""},
-	{"gardenia", "eterna-gym", 2, "grass", "", "", ""},
-	{"maylene", "veilstone-gym", 3, "fighting", "", "", ""},
-	{"crasher-wake", "pastoria-gym", 4, "water", "", "", ""},
-	{"fantina", "hearthome-gym", 5, "ghost", "", "", ""},
-	{"byron", "canalave-gym", 6, "steel", "", "", ""},
-	{"candice", "snowpoint-gym", 7, "ice", "", "", ""},
-	{"volkner", "sunyshore-gym", 8, "electric", "", "", ""},
+	{"roark", gymOreburgh, 1, "rock", "", "", ""},
+	{"gardenia", gymEterna, 2, "grass", "", "", ""},
+	{"maylene", gymVeilstone, 3, "fighting", "", "", ""},
+	{leaderCrasherWake, gymPastoria, 4, "water", "", "", ""},
+	{"fantina", gymHearthome, 5, "ghost", "", "", ""},
+	{"byron", gymCanalave, 6, "steel", "", "", ""},
+	{"candice", gymSnowpoint, 7, "ice", "", "", ""},
+	{"volkner", gymSunyshore, 8, "electric", "", "", ""},
 }
 
 var ptSlots = []slotDef{
-	{"roark", "oreburgh-gym", 1, "rock", "", "", ""},
-	{"gardenia", "eterna-gym", 2, "grass", "", "", ""},
-	{"fantina", "hearthome-gym", 3, "ghost", "", "", ""},
-	{"maylene", "veilstone-gym", 4, "fighting", "", "", ""},
-	{"crasher-wake", "pastoria-gym", 5, "water", "", "", ""},
-	{"byron", "canalave-gym", 6, "steel", "", "", ""},
-	{"candice", "snowpoint-gym", 7, "ice", "", "", ""},
-	{"volkner", "sunyshore-gym", 8, "electric", "", "", ""},
+	{"roark", gymOreburgh, 1, "rock", "", "", ""},
+	{"gardenia", gymEterna, 2, "grass", "", "", ""},
+	{"fantina", gymHearthome, 3, "ghost", "", "", ""},
+	{"maylene", gymVeilstone, 4, "fighting", "", "", ""},
+	{leaderCrasherWake, gymPastoria, 5, "water", "", "", ""},
+	{"byron", gymCanalave, 6, "steel", "", "", ""},
+	{"candice", gymSnowpoint, 7, "ice", "", "", ""},
+	{"volkner", gymSunyshore, 8, "electric", "", "", ""},
 }
 
 // gameSlots: version group -> plazas de líder
@@ -262,26 +299,26 @@ var gameSlots = map[string][]slotDef{
 	"omega-ruby-alpha-sapphire":       hoennSlots("wallace"),
 	"brilliant-diamond-shining-pearl": dpSlots,
 	"black-white": {
-		{"chili", "striaton-gym", 1, "fire", "", "", "Si el jugador eligió a Snivy"},
-		{"cress", "striaton-gym", 1, "water", "", "", "Si el jugador eligió a Tepig"},
-		{"cilan", "striaton-gym", 1, "grass", "", "", "Si el jugador eligió a Oshawott"},
+		{"chili", gymStriaton, 1, "fire", "", "", "Si el jugador eligió a Snivy"},
+		{"cress", gymStriaton, 1, "water", "", "", "Si el jugador eligió a Tepig"},
+		{"cilan", gymStriaton, 1, "grass", "", "", "Si el jugador eligió a Oshawott"},
 		{"lenora", "nacrene-gym", 2, "normal", "", "", ""},
-		{"burgh", "castelia-gym", 3, "bug", "", "", ""},
-		{"elesa", "nimbasa-gym", 4, "electric", "", "", ""},
-		{"clay", "driftveil-gym", 5, "ground", "", "", ""},
-		{"skyla", "mistralton-gym", 6, "flying", "", "", ""},
+		{"burgh", gymCastelia, 3, "bug", "", "", ""},
+		{"elesa", gymNimbasa, 4, "electric", "", "", ""},
+		{"clay", gymDriftveil, 5, "ground", "", "", ""},
+		{"skyla", gymMistralton, 6, "flying", "", "", ""},
 		{"brycen", "icirrus-gym", 7, "ice", "", "", ""},
-		{"drayden", "opelucid-gym", 8, "dragon", "black", "", ""},
-		{"iris", "opelucid-gym", 8, "dragon", "white", "", ""},
+		{"drayden", gymOpelucid, 8, "dragon", "black", "", ""},
+		{"iris", gymOpelucid, 8, "dragon", "white", "", ""},
 	},
 	"black-2-white-2": {
 		{"cheren", "aspertia-gym", 1, "normal", "", "", ""},
 		{"roxie", "virbank-gym", 2, "poison", "", "", ""},
-		{"burgh", "castelia-gym", 3, "bug", "", "", ""},
-		{"elesa", "nimbasa-gym", 4, "electric", "", "", ""},
-		{"clay", "driftveil-gym", 5, "ground", "", "", ""},
-		{"skyla", "mistralton-gym", 6, "flying", "", "", ""},
-		{"drayden", "opelucid-gym", 7, "dragon", "", "", ""},
+		{"burgh", gymCastelia, 3, "bug", "", "", ""},
+		{"elesa", gymNimbasa, 4, "electric", "", "", ""},
+		{"clay", gymDriftveil, 5, "ground", "", "", ""},
+		{"skyla", gymMistralton, 6, "flying", "", "", ""},
+		{"drayden", gymOpelucid, 7, "dragon", "", "", ""},
 		{"marlon", "humilau-gym", 8, "water", "", "", ""},
 	},
 	"x-y": {
@@ -298,23 +335,23 @@ var gameSlots = map[string][]slotDef{
 		{"milo", "turffield-stadium", 1, "grass", "", "", ""},
 		{"nessa", "hulbury-stadium", 2, "water", "", "", ""},
 		{"kabu", "motostoke-stadium", 3, "fire", "", "", ""},
-		{"bea", "stow-on-side-stadium", 4, "fighting", "sword", "Fighting Badge", ""},
-		{"allister", "stow-on-side-stadium", 4, "ghost", "shield", "Ghost Badge", ""},
+		{"bea", gymStowOnSide, 4, "fighting", "sword", "Fighting Badge", ""},
+		{"allister", gymStowOnSide, 4, "ghost", "shield", "Ghost Badge", ""},
 		{"opal", "ballonlea-stadium", 5, "fairy", "", "", ""},
-		{"gordie", "circhester-stadium", 6, "rock", "sword", "Rock Badge", ""},
-		{"melony", "circhester-stadium", 6, "ice", "shield", "Ice Badge", ""},
+		{"gordie", gymCirchester, 6, "rock", "sword", "Rock Badge", ""},
+		{"melony", gymCirchester, 6, "ice", "shield", "Ice Badge", ""},
 		{"piers", "spikemuth-gym", 7, "dark", "", "", ""},
 		{"raihan", "hammerlocke-stadium", 8, "dragon", "", "", ""},
 	},
 	"scarlet-violet": {
-		{"katy", "cortondo-gym", 1, "bug", "", "", "Orden libre; orden por nivel"},
-		{"brassius", "artazon-gym", 2, "grass", "", "", "Orden libre; orden por nivel"},
-		{"iono", "levincia-gym", 3, "electric", "", "", "Orden libre; orden por nivel"},
-		{"kofu", "cascarrafa-gym", 4, "water", "", "", "Orden libre; orden por nivel"},
-		{"larry", "medali-gym", 5, "normal", "", "", "Orden libre; orden por nivel"},
-		{"ryme", "montenevera-gym", 6, "ghost", "", "", "Orden libre; orden por nivel"},
-		{"tulip", "alfornada-gym", 7, "psychic", "", "", "Orden libre; orden por nivel"},
-		{"grusha", "glaseado-gym", 8, "ice", "", "", "Orden libre; orden por nivel"},
+		{"katy", "cortondo-gym", 1, "bug", "", "", noteFreeOrder},
+		{"brassius", "artazon-gym", 2, "grass", "", "", noteFreeOrder},
+		{"iono", "levincia-gym", 3, "electric", "", "", noteFreeOrder},
+		{"kofu", "cascarrafa-gym", 4, "water", "", "", noteFreeOrder},
+		{"larry", "medali-gym", 5, "normal", "", "", noteFreeOrder},
+		{"ryme", "montenevera-gym", 6, "ghost", "", "", noteFreeOrder},
+		{"tulip", "alfornada-gym", 7, "psychic", "", "", noteFreeOrder},
+		{"grusha", "glaseado-gym", 8, "ice", "", "", noteFreeOrder},
 	},
 }
 

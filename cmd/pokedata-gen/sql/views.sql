@@ -134,11 +134,11 @@ SELECT b.gym_battle_id, b.generation, b.version_group, b.version, b.region,
        (SELECT GROUP_CONCAT(name_es, ', ') FROM (
             SELECT m.name_es FROM gym_battle_pokemon_moves bm
             JOIN moves m ON m.id = bm.move_id
-            WHERE bm.gym_battle_pokemon_id = bp.id ORDER BY bm.slot)) AS moves_es,
+            WHERE bm.gym_battle_pokemon_id = bp.id ORDER BY bm.slot ASC)) AS moves_es,
        (SELECT GROUP_CONCAT(name_en, ', ') FROM (
             SELECT m.name_en FROM gym_battle_pokemon_moves bm
             JOIN moves m ON m.id = bm.move_id
-            WHERE bm.gym_battle_pokemon_id = bp.id ORDER BY bm.slot)) AS moves_en,
+            WHERE bm.gym_battle_pokemon_id = bp.id ORDER BY bm.slot ASC)) AS moves_en,
        bp.moves_source
 FROM v_gym_battles b
 JOIN gym_battle_pokemon bp ON bp.gym_battle_id = b.gym_battle_id

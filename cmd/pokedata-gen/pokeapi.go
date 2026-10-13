@@ -181,7 +181,22 @@ func loadPokeAPI(ds *Dataset, s *Src) *Lookups {
 		formsBySpecies: map[int][]int{},
 	}
 
-	// --- Regiones, generaciones, juegos ---
+	vgRank, versionRank := loadGames(ds, s, L)
+	loadTypesAndStats(ds, s, L)
+	loadAbilities(ds, s, L, vgRank)
+	loadItems(ds, s, L, vgRank)
+	loadMoves(ds, s, L, vgRank)
+	loadBreeding(ds, s)
+	loadSpecies(ds, s, L, versionRank)
+	loadPokemon(ds, s, L)
+	loadEvolutionAndLocations(ds, s, L)
+	loadEncounters(ds, s)
+	loadFormsBySpecies(s, L)
+	return L
+}
+
+// loadGames: Regiones, generaciones, juegos.
+func loadGames(ds *Dataset, s *Src, L *Lookups) (vgRank, versionRank func(int) int) {
 	n := s.names("region_names", "region_id", "name")
 	t := ds.T("regions", "id", "identifier", "name_en", "name_es")
 	s.csv("regions").Each(func(r Rec) {
@@ -219,13 +234,16 @@ func loadPokeAPI(ds *Dataset, s *Src) *Lookups {
 		L.versionByIdent[r.Str("identifier")] = id
 		t.Add(id, r.Str("identifier"), r.Int("version_group_id"), n.get(id, langEN), n.get(id, langES))
 	})
-	vgRank := func(vg int) int { return vgOrder[vg] }
-	versionRank := func(v int) int { return vgOrder[versionVG[v]]*100 + v }
+	vgRank = func(vg int) int { return vgOrder[vg] }
+	versionRank = func(v int) int { return vgOrder[versionVG[v]]*100 + v }
+	return vgRank, versionRank
+}
 
-	// --- Tipos, estadísticas, naturalezas ---
-	n = s.names("move_damage_class_prose", "move_damage_class_id", "name")
+// loadTypesAndStats: Tipos, estadísticas, naturalezas.
+func loadTypesAndStats(ds *Dataset, s *Src, L *Lookups) {
+	n := s.names("move_damage_class_prose", "move_damage_class_id", "name")
 	d := s.names("move_damage_class_prose", "move_damage_class_id", "description")
-	t = ds.T("move_damage_classes", "id", "identifier", "name_en", "name_es", "description_en")
+	t := ds.T("move_damage_classes", "id", "identifier", "name_en", "name_es", "description_en")
 	s.csv("move_damage_classes").Each(func(r Rec) {
 		id := r.Int("id")
 		t.Add(id, r.Str("identifier"), n.get(id, langEN), n.get(id, langES), d.get(id, langEN))
@@ -278,13 +296,15 @@ func loadPokeAPI(ds *Dataset, s *Src) *Lookups {
 		id := r.Int("id")
 		t.Add(id, r.Int("stat_id"), r.Int("gene_mod_5"), n.get(id, langEN), n.get(id, langES))
 	})
+}
 
-	// --- Habilidades ---
-	n = s.names("ability_names", "ability_id", "name")
+// loadAbilities: Habilidades.
+func loadAbilities(ds *Dataset, s *Src, L *Lookups, vgRank func(int) int) {
+	n := s.names("ability_names", "ability_id", "name")
 	se := s.names("ability_prose", "ability_id", "short_effect")
 	ef := s.names("ability_prose", "ability_id", "effect")
 	fl := latestFlavor(s.csv("ability_flavor_text"), "ability_id", "version_group_id", vgRank)
-	t = ds.T("abilities", "id", "identifier", "generation_id", "is_main_series", "name_en", "name_es",
+	t := ds.T("abilities", "id", "identifier", "generation_id", "is_main_series", "name_en", "name_es",
 		"short_effect_en", "effect_en", "flavor_text_en", "flavor_text_es")
 	s.csv("abilities").Each(func(r Rec) {
 		id := r.Int("id")
@@ -296,10 +316,12 @@ func loadPokeAPI(ds *Dataset, s *Src) *Lookups {
 		t.Add(id, r.Str("identifier"), r.Int("generation_id"), r.B("is_main_series"), n.get(id, langEN), n.get(id, langES),
 			proseClean(se.get(id, langEN)), proseClean(ef.get(id, langEN)), fl.get(id, langEN), fl.get(id, langES))
 	})
+}
 
-	// --- Objetos ---
-	n = s.names("item_pocket_names", "item_pocket_id", "name")
-	t = ds.T("item_pockets", "id", "identifier", "name_en", "name_es")
+// loadItems: Objetos.
+func loadItems(ds *Dataset, s *Src, L *Lookups, vgRank func(int) int) {
+	n := s.names("item_pocket_names", "item_pocket_id", "name")
+	t := ds.T("item_pockets", "id", "identifier", "name_en", "name_es")
 	s.csv("item_pockets").Each(func(r Rec) {
 		id := r.Int("id")
 		t.Add(id, r.Str("identifier"), n.get(id, langEN), n.get(id, langES))
@@ -320,10 +342,10 @@ func loadPokeAPI(ds *Dataset, s *Src) *Lookups {
 	})
 
 	n = s.names("item_names", "item_id", "name")
-	se = s.names("item_prose", "item_id", "short_effect")
-	ef = s.names("item_prose", "item_id", "effect")
+	se := s.names("item_prose", "item_id", "short_effect")
+	ef := s.names("item_prose", "item_id", "effect")
 	ifl := s.csv("item_flavor_text")
-	fl = latestFlavor(ifl, "item_id", "version_group_id", vgRank)
+	fl := latestFlavor(ifl, "item_id", "version_group_id", vgRank)
 	t = ds.T("items", "id", "identifier", "category_id", "cost", "fling_power", "fling_effect_id", "name_en", "name_es",
 		"short_effect_en", "effect_en", "flavor_text_en", "flavor_text_es")
 	itemIdents := map[string]bool{}
@@ -344,7 +366,7 @@ func loadPokeAPI(ds *Dataset, s *Src) *Lookups {
 	})
 
 	n = s.names("item_flag_prose", "item_flag_id", "name")
-	d = s.names("item_flag_prose", "item_flag_id", "description")
+	d := s.names("item_flag_prose", "item_flag_id", "description")
 	t = ds.T("item_flags", "id", "identifier", "name_en", "description_en")
 	s.csv("item_flags").Each(func(r Rec) {
 		id := r.Int("id")
@@ -370,11 +392,13 @@ func loadPokeAPI(ds *Dataset, s *Src) *Lookups {
 	})
 	t = ds.T("berry_flavors", "berry_id", "contest_type_id", "flavor")
 	s.csv("berry_flavors").Each(func(r Rec) { t.Add(r.Int("berry_id"), r.Int("contest_type_id"), r.Int("flavor")) })
+}
 
-	// --- Movimientos ---
-	n = s.names("move_target_prose", "move_target_id", "name")
-	d = s.names("move_target_prose", "move_target_id", "description")
-	t = ds.T("move_targets", "id", "identifier", "name_en", "description_en")
+// loadMoves: Movimientos.
+func loadMoves(ds *Dataset, s *Src, L *Lookups, vgRank func(int) int) {
+	n := s.names("move_target_prose", "move_target_id", "name")
+	d := s.names("move_target_prose", "move_target_id", "description")
+	t := ds.T("move_targets", "id", "identifier", "name_en", "description_en")
 	s.csv("move_targets").Each(func(r Rec) {
 		id := r.Int("id")
 		t.Add(id, r.Str("identifier"), n.get(id, langEN), d.get(id, langEN))
@@ -395,10 +419,10 @@ func loadPokeAPI(ds *Dataset, s *Src) *Lookups {
 	})
 
 	n = s.names("move_names", "move_id", "name")
-	se = s.names("move_effect_prose", "move_effect_id", "short_effect")
-	ef = s.names("move_effect_prose", "move_effect_id", "effect")
+	se := s.names("move_effect_prose", "move_effect_id", "short_effect")
+	ef := s.names("move_effect_prose", "move_effect_id", "effect")
 	mfl := s.csv("move_flavor_text")
-	fl = latestFlavor(mfl, "move_id", "version_group_id", vgRank)
+	fl := latestFlavor(mfl, "move_id", "version_group_id", vgRank)
 	t = ds.T("moves", "id", "identifier", "generation_id", "type_id", "damage_class_id", "power", "pp", "accuracy",
 		"priority", "target_id", "effect_chance", "contest_type_id", "name_en", "name_es", "short_effect_en",
 		"effect_en", "flavor_text_en", "flavor_text_es")
@@ -456,10 +480,12 @@ func loadPokeAPI(ds *Dataset, s *Src) *Lookups {
 	s.csv("machines").Each(func(r Rec) {
 		t.Add(r.Int("machine_number"), r.Int("version_group_id"), r.Int("item_id"), r.Int("move_id"))
 	})
+}
 
-	// --- Crianza, crecimiento, aspecto ---
-	n = s.names("growth_rate_prose", "growth_rate_id", "name")
-	t = ds.T("growth_rates", "id", "identifier", "formula", "name_en", "name_es")
+// loadBreeding: Crianza, crecimiento, aspecto.
+func loadBreeding(ds *Dataset, s *Src) {
+	n := s.names("growth_rate_prose", "growth_rate_id", "name")
+	t := ds.T("growth_rates", "id", "identifier", "formula", "name_en", "name_es")
 	s.csv("growth_rates").Each(func(r Rec) {
 		id := r.Int("id")
 		t.Add(id, r.Str("identifier"), r.S("formula"), n.get(id, langEN), n.get(id, langES))
@@ -474,13 +500,15 @@ func loadPokeAPI(ds *Dataset, s *Src) *Lookups {
 
 	t = ds.T("evolution_chains", "id", "baby_trigger_item_id")
 	s.csv("evolution_chains").Each(func(r Rec) { t.Add(r.Int("id"), r.I("baby_trigger_item_id")) })
+}
 
-	// --- Especies ---
-	n = s.names("pokemon_species_names", "pokemon_species_id", "name")
+// loadSpecies: Especies.
+func loadSpecies(ds *Dataset, s *Src, L *Lookups, versionRank func(int) int) {
+	n := s.names("pokemon_species_names", "pokemon_species_id", "name")
 	g := s.names("pokemon_species_names", "pokemon_species_id", "genus")
 	sfl := s.csv("pokemon_species_flavor_text")
-	fl = latestFlavor(sfl, "species_id", "version_id", versionRank)
-	t = ds.T("pokemon_species", "id", "identifier", "name_en", "name_es", "genus_en", "genus_es", "generation_id",
+	fl := latestFlavor(sfl, "species_id", "version_id", versionRank)
+	t := ds.T("pokemon_species", "id", "identifier", "name_en", "name_es", "genus_en", "genus_es", "generation_id",
 		"evolves_from_species_id", "evolution_chain_id", "color_id", "shape_id", "habitat_id", "gender_rate",
 		"capture_rate", "base_happiness", "is_baby", "hatch_counter", "has_gender_differences", "growth_rate_id",
 		"forms_switchable", "is_legendary", "is_mythical", "sort_order", "flavor_text_en", "flavor_text_es")
@@ -503,9 +531,11 @@ func loadPokeAPI(ds *Dataset, s *Src) *Lookups {
 
 	t = ds.T("pokemon_egg_groups", "species_id", "egg_group_id")
 	s.csv("pokemon_egg_groups").Each(func(r Rec) { t.Add(r.Int("species_id"), r.Int("egg_group_id")) })
+}
 
-	// --- Pokémon y formas ---
-	t = ds.T("pokemon", "id", "identifier", "species_id", "height_dm", "weight_hg", "base_experience", "sort_order", "is_default")
+// loadPokemon: Pokémon y formas.
+func loadPokemon(ds *Dataset, s *Src, L *Lookups) {
+	t := ds.T("pokemon", "id", "identifier", "species_id", "height_dm", "weight_hg", "base_experience", "sort_order", "is_default")
 	s.csv("pokemon").Each(func(r Rec) {
 		id := r.Int("id")
 		L.pokemonByIdent[r.Str("identifier")] = id
@@ -563,8 +593,8 @@ func loadPokeAPI(ds *Dataset, s *Src) *Lookups {
 		t.Add(r.Int("pokemon_id"), r.Int("version_id"), r.Int("item_id"), r.Int("rarity"))
 	})
 
-	n = s.names("pokemon_move_method_prose", "pokemon_move_method_id", "name")
-	d = s.names("pokemon_move_method_prose", "pokemon_move_method_id", "description")
+	n := s.names("pokemon_move_method_prose", "pokemon_move_method_id", "name")
+	d := s.names("pokemon_move_method_prose", "pokemon_move_method_id", "description")
 	t = ds.T("pokemon_move_methods", "id", "identifier", "name_en", "name_es", "description_en")
 	s.csv("pokemon_move_methods").Each(func(r Rec) {
 		id := r.Int("id")
@@ -581,10 +611,12 @@ func loadPokeAPI(ds *Dataset, s *Src) *Lookups {
 		}
 		t.Add(p, vg, m, meth, r.Int("level"), r.I("order"), r.I("mastery"))
 	})
+}
 
-	// --- Evolución y ubicaciones ---
-	n = s.names("evolution_trigger_prose", "evolution_trigger_id", "name")
-	t = ds.T("evolution_triggers", "id", "identifier", "name_en", "name_es")
+// loadEvolutionAndLocations: Evolución y ubicaciones.
+func loadEvolutionAndLocations(ds *Dataset, s *Src, L *Lookups) {
+	n := s.names("evolution_trigger_prose", "evolution_trigger_id", "name")
+	t := ds.T("evolution_triggers", "id", "identifier", "name_en", "name_es")
 	s.csv("evolution_triggers").Each(func(r Rec) {
 		id := r.Int("id")
 		t.Add(id, r.Str("identifier"), n.get(id, langEN), n.get(id, langES))
@@ -633,7 +665,7 @@ func loadPokeAPI(ds *Dataset, s *Src) *Lookups {
 	})
 
 	n = s.names("pokedex_prose", "pokedex_id", "name")
-	d = s.names("pokedex_prose", "pokedex_id", "description")
+	d := s.names("pokedex_prose", "pokedex_id", "description")
 	t = ds.T("pokedexes", "id", "identifier", "region_id", "is_main_series", "name_en", "name_es", "description_en")
 	s.csv("pokedexes").Each(func(r Rec) {
 		id := r.Int("id")
@@ -643,10 +675,12 @@ func loadPokeAPI(ds *Dataset, s *Src) *Lookups {
 	s.csv("pokemon_dex_numbers").Each(func(r Rec) {
 		t.Add(r.Int("species_id"), r.Int("pokedex_id"), r.Int("pokedex_number"))
 	})
+}
 
-	// --- Encuentros ---
-	n = s.names("encounter_method_prose", "encounter_method_id", "name")
-	t = ds.T("encounter_methods", "id", "identifier", "sort_order", "name_en", "name_es")
+// loadEncounters: Encuentros.
+func loadEncounters(ds *Dataset, s *Src) {
+	n := s.names("encounter_method_prose", "encounter_method_id", "name")
+	t := ds.T("encounter_methods", "id", "identifier", "sort_order", "name_en", "name_es")
 	s.csv("encounter_methods").Each(func(r Rec) {
 		id := r.Int("id")
 		t.Add(id, r.Str("identifier"), r.I("order"), n.get(id, langEN), n.get(id, langES))
@@ -676,8 +710,10 @@ func loadPokeAPI(ds *Dataset, s *Src) *Lookups {
 	s.csv("encounter_condition_value_map").Each(func(r Rec) {
 		t.Add(r.Int("encounter_id"), r.Int("encounter_condition_value_id"))
 	})
+}
 
-	// Formas alternativas por especie (para pret gen 4 "form": N)
+// loadFormsBySpecies: Formas alternativas por especie (para pret gen 4 "form": N).
+func loadFormsBySpecies(s *Src, L *Lookups) {
 	type fo struct{ order, pokemon int }
 	tmp := map[int][]fo{}
 	s.csv("pokemon").Each(func(r Rec) {
@@ -689,7 +725,6 @@ func loadPokeAPI(ds *Dataset, s *Src) *Lookups {
 			L.formsBySpecies[sp] = append(L.formsBySpecies[sp], x.pokemon)
 		}
 	}
-	return L
 }
 
 func proseClean(v any) any {

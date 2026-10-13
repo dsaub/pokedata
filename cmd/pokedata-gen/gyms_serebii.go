@@ -128,8 +128,8 @@ var (
 )
 
 var serebiiLeaderAlias = map[string]string{
-	"ltsurge": "lt-surge", "lizatate": "tate-and-liza", "tateliza": "tate-and-liza",
-	"wake": "crasher-wake", "crasherwake": "crasher-wake",
+	"ltsurge": leaderLtSurge, "lizatate": "tate-and-liza", "tateliza": "tate-and-liza",
+	"wake": leaderCrasherWake, "crasherwake": leaderCrasherWake,
 }
 
 func serebiiLeader(name string) string {
@@ -171,24 +171,8 @@ func serebiiBattles(dir string) []Battle {
 
 func parseSerebiiTable(t *html.Node) Battle {
 	rs := rows(t)
-	var b Battle
-	b.Kind = "gym"
-	nameIdx := -1
-	for i, r := range rs {
-		cs := cells(r)
-		if len(cs) == 0 {
-			continue
-		}
-		tx := text(cs[0])
-		if len(cs) == 1 && strings.Contains(text(r), "Challenge Mode") {
-			b.Kind, b.Notes = "challenge_mode", "Modo Desafío"
-		}
-		if m := leaderRe.FindStringSubmatch(tx); m != nil && len(cs) > 1 {
-			b.Leader = serebiiLeader(m[1])
-			nameIdx = i
-			break
-		}
-	}
+	b := Battle{Kind: "gym"}
+	nameIdx := findSerebiiLeaderRow(rs, &b)
 	if nameIdx < 1 {
 		panic("serebii: tabla sin fila de nombres")
 	}
@@ -198,30 +182,7 @@ func parseSerebiiTable(t *html.Node) Battle {
 	n := len(nameCells)
 	b.Mons = make([]Mon, n)
 	for j, c := range nameCells {
-		m := &b.Mons[j]
-		tx := text(c)
-		if strings.Contains(tx, "♂") {
-			m.Gender = "M"
-		} else if strings.Contains(tx, "♀") {
-			m.Gender = "F"
-		}
-		m.Species = strings.TrimSpace(strings.NewReplacer("♂", "", "♀", "").Replace(tx))
-		if ls := links(c, "/pokedex"); len(ls) > 0 {
-			s := slug(ls[0])
-			if dexNumRe.MatchString(s) {
-				m.SpeciesID = atoi(s)
-			} else {
-				m.Species = s
-			}
-		}
-		for _, img := range findAll(imgCells[j], isElem("img")) {
-			if fm := formImgRe.FindStringSubmatch(attr(img, "src")); fm != nil {
-				m.FormSuffix = fm[2]
-				if m.SpeciesID == 0 {
-					m.SpeciesID = atoi(fm[1])
-				}
-			}
-		}
+		b.Mons[j] = parseSerebiiMon(c, imgCells[j])
 	}
 
 	// Filas siguientes: nivel, habilidad/tipos, ataques, objeto, extras
@@ -235,58 +196,123 @@ func parseSerebiiTable(t *html.Node) Battle {
 		rowText := text(r)
 		switch {
 		case stage == 0 && levelRe.MatchString(rowText):
-			first := cs[0]
-			ft := text(first)
-			b.Double = strings.Contains(ft, "Double Battle")
-			for _, h := range links(first, "/itemdex/") {
-				b.Items = append(b.Items, slug(h))
-			}
-			for j, c := range last {
-				if lm := levelRe.FindStringSubmatch(text(c)); lm != nil {
-					b.Mons[j].Level = atoi(lm[1])
-				}
-			}
+			serebiiLevelRow(&b, cs[0], last)
 			stage = 1
 		case stage == 1:
-			for j, c := range last {
-				if ls := links(c, "/abilitydex/"); len(ls) > 0 {
-					b.Mons[j].Ability = slug(ls[0])
-				}
-			}
+			forEachMon(b.Mons, last, serebiiAbility)
 			stage = 2
 		case strings.HasPrefix(rowText, "Attacks"):
-			for j, c := range last {
-				b.Mons[j].Moves = []string{}
-				for _, h := range links(c, "/attackdex") {
-					if s := slug(h); s != "" {
-						b.Mons[j].Moves = append(b.Mons[j].Moves, s)
-					}
-				}
-			}
+			forEachMon(b.Mons, last, serebiiMoves)
 		case strings.HasPrefix(rowText, "Hold Item"):
-			for j, c := range last {
-				if ls := links(c, "/itemdex/"); len(ls) > 0 {
-					b.Mons[j].Item = slug(ls[0])
-					continue
-				}
-				it := strings.TrimSpace(strings.TrimPrefix(strings.TrimPrefix(text(c), "Hold Item"), " :"))
-				if it != "" && it != "No Item" && it != "None" {
-					b.Mons[j].Item = it
-				}
-			}
+			forEachMon(b.Mons, last, serebiiItem)
 		default:
-			for j, c := range last {
-				ct := text(c)
-				if strings.Contains(ct, "Gigantamax") {
-					b.Mons[j].Gmax, b.Mons[j].Dynamax = true, true
-				} else if strings.Contains(ct, "Dynamax") {
-					b.Mons[j].Dynamax = true
-				}
-				if tm := teraTypeRe.FindStringSubmatch(ct); tm != nil {
-					b.Mons[j].Tera = strings.ToLower(tm[1])
-				}
-			}
+			forEachMon(b.Mons, last, serebiiExtras)
 		}
 	}
 	return b
+}
+
+// findSerebiiLeaderRow devuelve el índice de la fila con el nombre del líder
+// (-1 si no la hay) y anota en b el líder y si es el Modo Desafío.
+func findSerebiiLeaderRow(rs []*html.Node, b *Battle) int {
+	for i, r := range rs {
+		cs := cells(r)
+		if len(cs) == 0 {
+			continue
+		}
+		if len(cs) == 1 && strings.Contains(text(r), "Challenge Mode") {
+			b.Kind, b.Notes = "challenge_mode", "Modo Desafío"
+		}
+		if m := leaderRe.FindStringSubmatch(text(cs[0])); m != nil && len(cs) > 1 {
+			b.Leader = serebiiLeader(m[1])
+			return i
+		}
+	}
+	return -1
+}
+
+// parseSerebiiMon lee especie y sexo de la celda del nombre y la forma de la imagen.
+func parseSerebiiMon(nameCell, imgCell *html.Node) Mon {
+	var m Mon
+	tx := text(nameCell)
+	if strings.Contains(tx, "♂") {
+		m.Gender = "M"
+	} else if strings.Contains(tx, "♀") {
+		m.Gender = "F"
+	}
+	m.Species = strings.TrimSpace(strings.NewReplacer("♂", "", "♀", "").Replace(tx))
+	if ls := links(nameCell, "/pokedex"); len(ls) > 0 {
+		s := slug(ls[0])
+		if dexNumRe.MatchString(s) {
+			m.SpeciesID = atoi(s)
+		} else {
+			m.Species = s
+		}
+	}
+	for _, img := range findAll(imgCell, isElem("img")) {
+		if fm := formImgRe.FindStringSubmatch(attr(img, "src")); fm != nil {
+			m.FormSuffix = fm[2]
+			if m.SpeciesID == 0 {
+				m.SpeciesID = atoi(fm[1])
+			}
+		}
+	}
+	return m
+}
+
+func forEachMon(mons []Mon, cs []*html.Node, f func(*Mon, *html.Node)) {
+	for j, c := range cs {
+		f(&mons[j], c)
+	}
+}
+
+// serebiiLevelRow: la primera celda trae combate doble y objetos del líder; el resto, niveles.
+func serebiiLevelRow(b *Battle, first *html.Node, last []*html.Node) {
+	b.Double = strings.Contains(text(first), "Double Battle")
+	for _, h := range links(first, "/itemdex/") {
+		b.Items = append(b.Items, slug(h))
+	}
+	forEachMon(b.Mons, last, func(m *Mon, c *html.Node) {
+		if lm := levelRe.FindStringSubmatch(text(c)); lm != nil {
+			m.Level = atoi(lm[1])
+		}
+	})
+}
+
+func serebiiAbility(m *Mon, c *html.Node) {
+	if ls := links(c, "/abilitydex/"); len(ls) > 0 {
+		m.Ability = slug(ls[0])
+	}
+}
+
+func serebiiMoves(m *Mon, c *html.Node) {
+	m.Moves = []string{}
+	for _, h := range links(c, "/attackdex") {
+		if s := slug(h); s != "" {
+			m.Moves = append(m.Moves, s)
+		}
+	}
+}
+
+func serebiiItem(m *Mon, c *html.Node) {
+	if ls := links(c, "/itemdex/"); len(ls) > 0 {
+		m.Item = slug(ls[0])
+		return
+	}
+	it := strings.TrimSpace(strings.TrimPrefix(strings.TrimPrefix(text(c), "Hold Item"), " :"))
+	if it != "" && it != "No Item" && it != "None" {
+		m.Item = it
+	}
+}
+
+func serebiiExtras(m *Mon, c *html.Node) {
+	ct := text(c)
+	if strings.Contains(ct, "Gigantamax") {
+		m.Gmax, m.Dynamax = true, true
+	} else if strings.Contains(ct, "Dynamax") {
+		m.Dynamax = true
+	}
+	if tm := teraTypeRe.FindStringSubmatch(ct); tm != nil {
+		m.Tera = strings.ToLower(tm[1])
+	}
 }

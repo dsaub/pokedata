@@ -58,6 +58,18 @@ func stripComment(l string) string {
 	return strings.TrimSpace(l)
 }
 
+// stripNone quita los valores vacíos (none) y el prefijo de constante. Nunca
+// devuelve nil, para distinguir "sin movimientos" de "movimientos por defecto".
+func stripNone(list []string, none, prefix string) []string {
+	out := []string{}
+	for _, x := range list {
+		if x != none {
+			out = append(out, strings.TrimPrefix(x, prefix))
+		}
+	}
+	return out
+}
+
 func splitArgs(s string) []string {
 	var out []string
 	for _, p := range strings.Split(s, ",") {
@@ -85,24 +97,28 @@ func parseGen1Parties(path string) map[string][][]Mon {
 		if cur == "" || !strings.HasPrefix(l, "db ") {
 			continue
 		}
-		a := splitArgs(strings.TrimPrefix(l, "db "))
-		var party []Mon
-		if a[0] == "$FF" {
-			for i := 1; i+1 < len(a); i += 2 {
-				party = append(party, Mon{Level: atoi(a[i]), Species: a[i+1]})
-			}
-		} else {
-			lv := atoi(a[0])
-			for _, sp := range a[1:] {
-				if sp == "0" {
-					break
-				}
-				party = append(party, Mon{Level: lv, Species: sp})
-			}
-		}
-		out[cur] = append(out[cur], party)
+		out[cur] = append(out[cur], parseGen1Party(splitArgs(strings.TrimPrefix(l, "db "))))
 	}
 	return out
+}
+
+// parseGen1Party: "$FF, nivel, especie, nivel, especie..." o "nivel, especie, especie..., 0".
+func parseGen1Party(a []string) []Mon {
+	var party []Mon
+	if a[0] == "$FF" {
+		for i := 1; i+1 < len(a); i += 2 {
+			party = append(party, Mon{Level: atoi(a[i]), Species: a[i+1]})
+		}
+		return party
+	}
+	lv := atoi(a[0])
+	for _, sp := range a[1:] {
+		if sp == "0" {
+			break
+		}
+		party = append(party, Mon{Level: lv, Species: sp})
+	}
+	return party
 }
 
 var gen1Leaders = []struct {
@@ -111,7 +127,7 @@ var gen1Leaders = []struct {
 }{
 	{"brock", "BrockData", "BROCK", 1},
 	{"misty", "MistyData", "MISTY", 1},
-	{"lt-surge", "LtSurgeData", "LT_SURGE", 1},
+	{leaderLtSurge, "LtSurgeData", "LT_SURGE", 1},
 	{"erika", "ErikaData", "ERIKA", 1},
 	{"koga", "KogaData", "KOGA", 1},
 	{"sabrina", "SabrinaData", "SABRINA", 1},
@@ -170,7 +186,7 @@ func parseYellowSpecialMoves(path string) map[string][][3]string {
 }
 
 func gen1Battles(dir, repo, vg string) []Battle {
-	parties := parseGen1Parties(filepath.Join(dir, "pret", repo, "data/trainers/parties.asm"))
+	parties := parseGen1Parties(filepath.Join(dir, "pret", repo, pretGen12Parties))
 	special := filepath.Join(dir, "pret", repo, "data/trainers/special_moves.asm")
 	var lone map[int][2]string
 	var yellow map[string][][3]string
@@ -210,7 +226,7 @@ func gen1Battles(dir, repo, vg string) []Battle {
 var gen2Groups = map[string]string{
 	"FalknerGroup": "falkner", "BugsyGroup": "bugsy", "WhitneyGroup": "whitney", "MortyGroup": "morty",
 	"ChuckGroup": "chuck", "JasmineGroup": "jasmine", "PryceGroup": "pryce", "ClairGroup": "clair",
-	"BrockGroup": "brock", "MistyGroup": "misty", "LtSurgeGroup": "lt-surge", "ErikaGroup": "erika",
+	"BrockGroup": "brock", "MistyGroup": "misty", "LtSurgeGroup": leaderLtSurge, "ErikaGroup": "erika",
 	"JanineGroup": "janine", "SabrinaGroup": "sabrina", "BlaineGroup": "blaine", "BlueGroup": "blue",
 }
 
@@ -219,7 +235,7 @@ func gen2Battles(dir, repo, vg string) []Battle {
 	group, ttype := "", ""
 	partyN := 0
 	var cur *Battle
-	for _, raw := range strings.Split(readText(filepath.Join(dir, "pret", repo, "data/trainers/parties.asm")), "\n") {
+	for _, raw := range strings.Split(readText(filepath.Join(dir, "pret", repo, pretGen12Parties)), "\n") {
 		l := stripComment(raw)
 		if strings.HasSuffix(l, "Group:") {
 			group, partyN, cur = strings.TrimSuffix(l, ":"), 0, nil
@@ -242,29 +258,27 @@ func gen2Battles(dir, repo, vg string) []Battle {
 			}
 			continue
 		}
-		if cur == nil || body == "-1" {
-			continue
+		if cur != nil && body != "-1" {
+			cur.Mons = append(cur.Mons, parseGen2Mon(splitArgs(body), ttype))
 		}
-		a := splitArgs(body)
-		m := Mon{Level: atoi(a[0]), Species: a[1]}
-		rest := a[2:]
-		if ttype == "TRAINERTYPE_ITEM" || ttype == "TRAINERTYPE_ITEM_MOVES" {
-			if rest[0] != "NO_ITEM" {
-				m.Item = rest[0]
-			}
-			rest = rest[1:]
-		}
-		if ttype == "TRAINERTYPE_MOVES" || ttype == "TRAINERTYPE_ITEM_MOVES" {
-			m.Moves = []string{}
-			for _, mv := range rest {
-				if mv != "NO_MOVE" {
-					m.Moves = append(m.Moves, mv)
-				}
-			}
-		}
-		cur.Mons = append(cur.Mons, m)
 	}
 	return out
+}
+
+// parseGen2Mon: "nivel, especie[, objeto][, movimientos...]" según el tipo de entrenador.
+func parseGen2Mon(a []string, ttype string) Mon {
+	m := Mon{Level: atoi(a[0]), Species: a[1]}
+	rest := a[2:]
+	if ttype == "TRAINERTYPE_ITEM" || ttype == "TRAINERTYPE_ITEM_MOVES" {
+		if rest[0] != "NO_ITEM" {
+			m.Item = rest[0]
+		}
+		rest = rest[1:]
+	}
+	if ttype == "TRAINERTYPE_MOVES" || ttype == "TRAINERTYPE_ITEM_MOVES" {
+		m.Moves = stripNone(rest, "NO_MOVE", "")
+	}
+	return m
 }
 
 // ---------------------------------------------------------------------
@@ -286,76 +300,81 @@ var (
 var gen3LeaderNames = map[string]string{
 	"roxanne": "roxanne", "brawly": "brawly", "wattson": "wattson", "flannery": "flannery",
 	"norman": "norman", "winona": "winona", "tateliza": "tate-and-liza", "wallace": "wallace", "juan": "juan",
-	"brock": "brock", "misty": "misty", "ltsurge": "lt-surge", "erika": "erika", "koga": "koga",
+	"brock": "brock", "misty": "misty", "ltsurge": leaderLtSurge, "erika": "erika", "koga": "koga",
 	"sabrina": "sabrina", "blaine": "blaine", "giovanni": "giovanni",
 }
 
 func gen3Battles(dir, repo, trainersFile, vg string) []Battle {
+	parties := parseGen3Parties(readText(filepath.Join(dir, "pret", repo, pretGen3Parties)))
+	var out []Battle
+	for _, m := range gen3TrainerRe.FindAllStringSubmatch(readText(filepath.Join(dir, "pret", repo, "src/data", trainersFile)), -1) {
+		if b, ok := gen3Battle(m[1], m[2], repo, vg, parties); ok {
+			out = append(out, b)
+		}
+	}
+	return out
+}
+
+// parseGen3Parties: nombre del array C del equipo -> Pokémon.
+func parseGen3Parties(src string) map[string][]Mon {
 	parties := map[string][]Mon{}
-	for _, m := range gen3ArrRe.FindAllStringSubmatch(readText(filepath.Join(dir, "pret", repo, "src/data/trainer_parties.h")), -1) {
+	for _, m := range gen3ArrRe.FindAllStringSubmatch(src, -1) {
 		var mons []Mon
 		for _, f := range gen3FieldRe.FindAllStringSubmatch(m[2], -1) {
 			v := strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(f[2]), ","))
-			if f[1] == "iv" {
+			if f[1] == "iv" { // primer campo de cada Pokémon
 				mons = append(mons, Mon{Difficulty: int64(atoi(v))})
 				continue
 			}
-			cur := &mons[len(mons)-1]
-			switch f[1] {
-			case "lvl", "level":
-				cur.Level = atoi(v)
-			case "species":
-				cur.Species = strings.TrimPrefix(v, "SPECIES_")
-			case "heldItem":
-				if v != "ITEM_NONE" {
-					cur.Item = strings.TrimPrefix(v, "ITEM_")
-				}
-			case "moves":
-				cur.Moves = []string{}
-				for _, mv := range splitArgs(strings.Trim(v, "{}")) {
-					if mv != "MOVE_NONE" {
-						cur.Moves = append(cur.Moves, strings.TrimPrefix(mv, "MOVE_"))
-					}
-				}
-			}
+			setGen3Field(&mons[len(mons)-1], f[1], v)
 		}
 		parties[m[1]] = mons
 	}
+	return parties
+}
 
-	var out []Battle
-	for _, m := range gen3TrainerRe.FindAllStringSubmatch(readText(filepath.Join(dir, "pret", repo, "src/data", trainersFile)), -1) {
-		key, body := m[1], m[2]
-		cls := gen3ClassRe.FindStringSubmatch(body)
-		if cls == nil || cls[1] != "TRAINER_CLASS_LEADER" {
-			continue
+func setGen3Field(cur *Mon, field, v string) {
+	switch field {
+	case "lvl", "level":
+		cur.Level = atoi(v)
+	case "species":
+		cur.Species = strings.TrimPrefix(v, "SPECIES_")
+	case "heldItem":
+		if v != "ITEM_NONE" {
+			cur.Item = strings.TrimPrefix(v, "ITEM_")
 		}
-		name := gen3NameRe.FindStringSubmatch(body)[1]
-		leader, ok := gen3LeaderNames[norm(name)]
-		if !ok {
-			panic(fmt.Sprintf("%s: líder desconocido %q (%s)", repo, name, key))
-		}
-		b := Battle{VG: vg, Leader: leader, Kind: "gym", Source: "pret/" + repo, Ref: key}
-		if s := gen3SuffixRe.FindStringSubmatch(key); s != nil && s[1] != "1" {
-			b.Kind, b.Rematch = "rematch", atoi(s[1])-1
-		}
-		if d := gen3DoubleRe.FindStringSubmatch(body); d != nil && d[1] == "TRUE" {
-			b.Double = true
-		}
-		if it := gen3ItemsRe.FindStringSubmatch(body); it != nil {
-			for _, x := range splitArgs(it[1]) {
-				if x != "ITEM_NONE" {
-					b.Items = append(b.Items, strings.TrimPrefix(x, "ITEM_"))
-				}
-			}
-		}
-		pm := gen3PartyRe.FindStringSubmatch(body)
-		if pm == nil || parties[pm[1]] == nil {
-			panic(fmt.Sprintf("%s: equipo no encontrado para %s", repo, key))
-		}
-		b.Mons = parties[pm[1]]
-		out = append(out, b)
+	case "moves":
+		cur.Moves = stripNone(splitArgs(strings.Trim(v, "{}")), "MOVE_NONE", "MOVE_")
 	}
-	return out
+}
+
+// gen3Battle convierte la entrada [TRAINER_X] = {...}; ok = false si no es un líder.
+func gen3Battle(key, body, repo, vg string, parties map[string][]Mon) (Battle, bool) {
+	cls := gen3ClassRe.FindStringSubmatch(body)
+	if cls == nil || cls[1] != "TRAINER_CLASS_LEADER" {
+		return Battle{}, false
+	}
+	name := gen3NameRe.FindStringSubmatch(body)[1]
+	leader, ok := gen3LeaderNames[norm(name)]
+	if !ok {
+		panic(fmt.Sprintf("%s: líder desconocido %q (%s)", repo, name, key))
+	}
+	b := Battle{VG: vg, Leader: leader, Kind: "gym", Source: "pret/" + repo, Ref: key}
+	if s := gen3SuffixRe.FindStringSubmatch(key); s != nil && s[1] != "1" {
+		b.Kind, b.Rematch = "rematch", atoi(s[1])-1
+	}
+	if d := gen3DoubleRe.FindStringSubmatch(body); d != nil && d[1] == "TRUE" {
+		b.Double = true
+	}
+	if it := gen3ItemsRe.FindStringSubmatch(body); it != nil {
+		b.Items = stripNone(splitArgs(it[1]), "ITEM_NONE", "ITEM_")
+	}
+	pm := gen3PartyRe.FindStringSubmatch(body)
+	if pm == nil || parties[pm[1]] == nil {
+		panic(fmt.Sprintf("%s: equipo no encontrado para %s", repo, key))
+	}
+	b.Mons = parties[pm[1]]
+	return b, true
 }
 
 // ---------------------------------------------------------------------
@@ -394,54 +413,49 @@ func truthy(v any) bool {
 }
 
 func g4Convert(t g4Trainer) ([]string, []Mon, bool) {
-	var items []string
-	for _, it := range t.Items {
-		if it != "ITEM_NONE" {
-			items = append(items, strings.TrimPrefix(it, "ITEM_"))
-		}
-	}
 	var mons []Mon
 	for _, p := range t.Party {
-		m := Mon{Species: strings.TrimPrefix(p.Species, "SPECIES_"), Form: p.Form, Level: p.Level}
-		if p.Item != nil && *p.Item != "ITEM_NONE" {
-			m.Item = strings.TrimPrefix(*p.Item, "ITEM_")
-		}
-		if p.Moves != nil {
-			m.Moves = []string{}
-			for _, mv := range p.Moves {
-				if mv != "MOVE_NONE" {
-					m.Moves = append(m.Moves, strings.TrimPrefix(mv, "MOVE_"))
-				}
-			}
-		}
-		switch {
-		case p.Difficulty != nil:
-			m.Difficulty = int64(*p.Difficulty)
-		case p.IVScale != nil:
-			m.Difficulty = int64(*p.IVScale)
-		}
-		if p.AbilityOverride == "TRPOKE_ABILITY_OVERRIDE_SECOND" {
-			m.AbilitySlot = 2
-		} else if p.AbilityOverride == "TRPOKE_ABILITY_OVERRIDE_FIRST" {
-			m.AbilitySlot = 1
-		}
-		switch p.GenderOverride {
-		case "TRPOKE_GENDER_OVERRIDE_MALE":
-			m.Gender = "M"
-		case "TRPOKE_GENDER_OVERRIDE_FEMALE":
-			m.Gender = "F"
-		}
-		mons = append(mons, m)
+		mons = append(mons, g4ConvertMon(p))
 	}
+	items := stripNone(t.Items, "ITEM_NONE", "ITEM_")
 	return items, mons, truthy(t.Double) || truthy(t.DoubleBattle) || truthy(t.DoubleB)
 }
 
+func g4ConvertMon(p g4Mon) Mon {
+	m := Mon{Species: strings.TrimPrefix(p.Species, "SPECIES_"), Form: p.Form, Level: p.Level}
+	if p.Item != nil && *p.Item != "ITEM_NONE" {
+		m.Item = strings.TrimPrefix(*p.Item, "ITEM_")
+	}
+	if p.Moves != nil {
+		m.Moves = stripNone(p.Moves, "MOVE_NONE", "MOVE_")
+	}
+	switch {
+	case p.Difficulty != nil:
+		m.Difficulty = int64(*p.Difficulty)
+	case p.IVScale != nil:
+		m.Difficulty = int64(*p.IVScale)
+	}
+	switch p.AbilityOverride {
+	case "TRPOKE_ABILITY_OVERRIDE_SECOND":
+		m.AbilitySlot = 2
+	case "TRPOKE_ABILITY_OVERRIDE_FIRST":
+		m.AbilitySlot = 1
+	}
+	switch p.GenderOverride {
+	case "TRPOKE_GENDER_OVERRIDE_MALE":
+		m.Gender = "M"
+	case "TRPOKE_GENDER_OVERRIDE_FEMALE":
+		m.Gender = "F"
+	}
+	return m
+}
+
 var gen4ClassLeader = map[string]string{
-	"ROARK": "roark", "GARDENIA": "gardenia", "MAYLENE": "maylene", "WAKE": "crasher-wake",
+	"ROARK": "roark", "GARDENIA": "gardenia", "MAYLENE": "maylene", "WAKE": leaderCrasherWake,
 	"FANTINA": "fantina", "BYRON": "byron", "CANDICE": "candice", "VOLKNER": "volkner",
 	"FALKNER": "falkner", "BUGSY": "bugsy", "WHITNEY": "whitney", "MORTY": "morty", "CHUCK": "chuck",
 	"JASMINE": "jasmine", "PRYCE": "pryce", "CLAIR": "clair", "BROCK": "brock", "MISTY": "misty",
-	"LT_SURGE": "lt-surge", "ERIKA": "erika", "JANINE": "janine", "SABRINA": "sabrina",
+	"LT_SURGE": leaderLtSurge, "ERIKA": "erika", "JANINE": "janine", "SABRINA": "sabrina",
 	"BLAINE": "blaine", "BLUE": "blue",
 }
 

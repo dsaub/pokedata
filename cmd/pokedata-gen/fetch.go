@@ -16,6 +16,10 @@ const (
 	pretBase       = "https://raw.githubusercontent.com/pret/"
 	serebiiBase    = "https://www.serebii.net/"
 	userAgent      = "Mozilla/5.0 (X11; Linux x86_64) pokedata-gen/1.0"
+
+	// Ficheros de equipos en las descompilaciones de pret.
+	pretGen12Parties = "data/trainers/parties.asm"
+	pretGen3Parties  = "src/data/trainer_parties.h"
 )
 
 // CSV de PokeAPI que usa el generador.
@@ -51,17 +55,17 @@ var pokeapiCSVs = []string{
 
 // Ficheros de las descompilaciones de pret (datos reales de los juegos, gen 1-4).
 var pretFiles = [][2]string{
-	{"pokered", "data/trainers/parties.asm"},
+	{"pokered", pretGen12Parties},
 	{"pokered", "data/trainers/special_moves.asm"},
-	{"pokeyellow", "data/trainers/parties.asm"},
+	{"pokeyellow", pretGen12Parties},
 	{"pokeyellow", "data/trainers/special_moves.asm"},
-	{"pokegold", "data/trainers/parties.asm"},
-	{"pokecrystal", "data/trainers/parties.asm"},
-	{"pokeruby", "src/data/trainer_parties.h"},
+	{"pokegold", pretGen12Parties},
+	{"pokecrystal", pretGen12Parties},
+	{"pokeruby", pretGen3Parties},
 	{"pokeruby", "src/data/trainers_en.h"},
-	{"pokeemerald", "src/data/trainer_parties.h"},
+	{"pokeemerald", pretGen3Parties},
 	{"pokeemerald", "src/data/trainers.h"},
-	{"pokefirered", "src/data/trainer_parties.h"},
+	{"pokefirered", pretGen3Parties},
 	{"pokefirered", "src/data/trainers.h"},
 	{"pokediamond", "files/poketool/trainer/trdata.json"},
 	{"pokeheartgold", "files/poketool/trainer/trainers.json"},
