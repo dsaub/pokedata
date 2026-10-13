@@ -9,6 +9,7 @@ script `.sql` equivalente.
 go build -o pokedata-gen ./cmd/pokedata-gen
 
 ./pokedata-gen                         # descarga las fuentes y crea pokedata.db
+./pokedata-gen -v                      # muestra el progreso de la descarga cada 5s
 ./pokedata-gen -sql pokedata.sql       # además, escribe el script SQL
 ./pokedata-gen -offline                # solo con la caché de ./sources
 ./pokedata-gen -refresh                # vuelve a descargar todas las fuentes
@@ -23,7 +24,7 @@ no se puede resolver, si hay claves foráneas rotas o si alguna vista no es vál
 ## En una imagen Docker
 
 ```dockerfile
-FROM golang:1.25 AS pokedata
+FROM golang:1.27 AS pokedata
 WORKDIR /src
 COPY pokedata/ .
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /pokedata-gen ./cmd/pokedata-gen

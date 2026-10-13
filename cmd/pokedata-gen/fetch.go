@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -107,7 +108,7 @@ func sourceList(dir string) []download {
 }
 
 // ensureSources descarga las fuentes que falten (o todas si refresh).
-func ensureSources(ctx context.Context, dir string, refresh, offline bool, logf func(string, ...any)) error {
+func ensureSources(ctx context.Context, dir string, refresh, offline, verbose bool, logf func(string, ...any)) error {
 	var todo []download
 	for _, d := range sourceList(dir) {
 		if _, err := os.Stat(d.dest); err == nil && !refresh {
@@ -126,11 +127,37 @@ func ensureSources(ctx context.Context, dir string, refresh, offline bool, logf 
 
 	client := &http.Client{Timeout: 5 * time.Minute}
 	var (
-		wg   sync.WaitGroup
-		mu   sync.Mutex
-		errs []error
-		sem  = make(chan struct{}, 6)
+		wg    sync.WaitGroup
+		mu    sync.Mutex
+		errs  []error
+		sem   = make(chan struct{}, 6)
+		done  atomic.Int32
+		total = len(todo)
 	)
+
+	if verbose {
+		ticker := time.NewTicker(5 * time.Second)
+		stopTicker := make(chan struct{})
+		defer func() {
+			ticker.Stop()
+			close(stopTicker)
+		}()
+		go func() {
+			for {
+				select {
+				case <-ticker.C:
+					n := int(done.Load())
+					pct := float64(n) / float64(total) * 100
+					logf("fuentes: descargados %d/%d ficheros (%.1f%%)", n, total, pct)
+				case <-stopTicker:
+					return
+				case <-ctx.Done():
+					return
+				}
+			}
+		}()
+	}
+
 	for _, d := range todo {
 		wg.Add(1)
 		go func(d download) {
@@ -140,6 +167,7 @@ func ensureSources(ctx context.Context, dir string, refresh, offline bool, logf 
 			var err error
 			for attempt := 1; attempt <= 3; attempt++ {
 				if err = fetchOne(ctx, client, d); err == nil {
+					done.Add(1)
 					return
 				}
 				time.Sleep(time.Duration(attempt) * 2 * time.Second)

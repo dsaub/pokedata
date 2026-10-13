@@ -20,6 +20,7 @@ func main() {
 		refresh = flag.Bool("refresh", false, "volver a descargar todas las fuentes aunque estén en caché")
 		offline = flag.Bool("offline", false, "no descargar nada; fallar si falta alguna fuente")
 		quiet   = flag.Bool("q", false, "no mostrar progreso")
+		verbose = flag.Bool("v", false, "mostrar progreso de la descarga cada 5 segundos")
 	)
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Uso: %s [opciones]\n\n", os.Args[0])
@@ -32,13 +33,13 @@ func main() {
 			fmt.Fprintf(os.Stderr, format+"\n", a...)
 		}
 	}
-	if err := run(*sources, *dbPath, *sqlPath, *refresh, *offline, logf); err != nil {
+	if err := run(*sources, *dbPath, *sqlPath, *refresh, *offline, *verbose, logf); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
 	}
 }
 
-func run(sources, dbPath, sqlPath string, refresh, offline bool, logf func(string, ...any)) (err error) {
+func run(sources, dbPath, sqlPath string, refresh, offline, verbose bool, logf func(string, ...any)) (err error) {
 	if dbPath == "" && sqlPath == "" {
 		return fmt.Errorf("indica al menos -db o -sql")
 	}
@@ -52,7 +53,7 @@ func run(sources, dbPath, sqlPath string, refresh, offline bool, logf func(strin
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	if err := ensureSources(ctx, sources, refresh, offline, logf); err != nil {
+	if err := ensureSources(ctx, sources, refresh, offline, verbose, logf); err != nil {
 		return err
 	}
 
