@@ -147,3 +147,28 @@ JOIN pokemon_species s     ON s.id = p.species_id
 LEFT JOIN abilities a      ON a.id = bp.ability_id
 LEFT JOIN items i          ON i.id = bp.held_item_id
 LEFT JOIN types tt         ON tt.id = bp.tera_type_id;
+
+CREATE VIEW v_gimnasios AS
+SELECT
+    gb.id                           AS gym_battle_id,
+    COALESCE(l.name_es, g.city_en)  AS gimnasio,
+    gl.name_es                      AS lider,
+    gb.badge_en                     AS medalla,
+    t.name_es                       AS tipo,
+    COALESCE(
+        v.name_es,
+        (SELECT group_concat(v2.name_es, ' / ')
+           FROM versions v2
+          WHERE v2.version_group_id = gb.version_group_id)
+    )                               AS juego,
+    vg.identifier                   AS version_group,
+    vg.sort_order                   AS orden_juego,
+    gb.gym_order                    AS n_medalla,
+    gb.battle_kind                  AS tipo_combate
+FROM gym_battles gb
+JOIN gyms g            ON g.id  = gb.gym_id
+JOIN gym_leaders gl    ON gl.id = gb.gym_leader_id
+JOIN version_groups vg ON vg.id = gb.version_group_id
+LEFT JOIN locations l  ON l.id = g.location_id
+LEFT JOIN types t      ON t.id = gb.specialty_type_id
+LEFT JOIN versions v   ON v.id = gb.version_id;
