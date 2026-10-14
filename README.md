@@ -1,25 +1,45 @@
 # pokedata
 
 `pokedata-gen` es un binario Go estático (sin cgo) que descarga las fuentes y genera
-una base de datos SQLite con todos los datos de Pokémon y los equipos de los
+una base de datos SQLite o MySQL/MariaDB con todos los datos de Pokémon y los equipos de los
 líderes de gimnasio de todas las generaciones. Si se le pide, vuelca también un
-script `.sql` equivalente.
+script `.sql` equivalente adaptado al motor seleccionado.
 
 ```sh
 go build -o pokedata-gen ./cmd/pokedata-gen
 
+# Modo SQLite (por defecto)
 ./pokedata-gen                         # descarga las fuentes y crea pokedata.db
+./pokedata-gen --mode sqlite           # equivalente al anterior
 ./pokedata-gen -v                      # muestra el progreso de la descarga cada 5s
-./pokedata-gen -sql pokedata.sql       # además, escribe el script SQL
+./pokedata-gen -sql pokedata.sql       # además, escribe el script SQL para SQLite
 ./pokedata-gen -offline                # solo con la caché de ./sources
 ./pokedata-gen -refresh                # vuelve a descargar todas las fuentes
 ./pokedata-gen -db /data/poke.db -sources /tmp/src -q
+
+# Modo MySQL / MariaDB (instancia local o remota)
+./pokedata-gen --mode mysql --host 192.168.1.100 --port 3306 --username root --password mi_pass --database pokedata --create-database
+./pokedata-gen --mode mysql --host 127.0.0.1 --username user --password pass --database pokedata
+./pokedata-gen --mode mysql --sql pokedata_mysql.sql -offline   # vuelca script SQL para MySQL
 ```
 
-Con el script: `sqlite3 pokedata.db < pokedata.sql`.
+Con el script:
+- SQLite: `sqlite3 pokedata.db < pokedata.sql`
+- MySQL / MariaDB: `mysql -u <usuario> -p <base_de_datos> < pokedata_mysql.sql`
 
-La generación falla, sin dejar un `.db` a medias, si algún nombre de las fuentes
-no se puede resolver, si hay claves foráneas rotas o si alguna vista no es válida.
+Opciones para MySQL / MariaDB:
+- `--mode`: `sqlite` (por defecto) o `mysql` (también acepta `mariadb`).
+- `--host`: dirección del servidor MySQL (por defecto `127.0.0.1`, admite formato `host:puerto`).
+- `--port`: puerto TCP (por defecto `3306`).
+- `--username` / `--user`: usuario con permisos en la base de datos (por defecto `root`).
+- `--password`: contraseña en texto plano enviada por el proceso que invoca al binario.
+- `--database`: nombre de la base de datos de destino (por defecto `pokedata`).
+- `--create-database`: crea automáticamente la base de datos en el servidor si aún no existe.
+- `--tls`: modo TLS/SSL (`preferred` por defecto, `true`, `skip-verify` o `false`). Resuelve requisitos de conexión segura (`--require_secure_transport=ON`).
+- `--ssl`: fuerza TLS/SSL (equivalente a `--tls true`).
+
+La generación falla, sin dejar datos a medias, si algún nombre de las fuentes
+no se puede resolver, si hay errores de conexión o si alguna vista no es válida.
 
 ## En una imagen Docker
 
