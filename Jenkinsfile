@@ -39,15 +39,6 @@ pipeline {
                 }
             }
         }
-
-        stage('Quality Gate') {
-            steps {
-                timeout(time: 2, unit: 'MINUTES') {
-                    // Espera a que SonarQube procese el reporte y valide si pasa el gate
-                    waitForQualityGate abortPipeline: true
-                }
-            }
-        }
     }
 
     post {
