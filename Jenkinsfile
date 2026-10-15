@@ -5,7 +5,7 @@ pipeline {
     }
 
     environment {
-        SONAR_SERVER = 'main'
+        SONAR_SERVER = 'SonarQube'
         // Directorios estándar de caché de Go en srv01
         GOPATH       = "${WORKSPACE}/.go"
         GOCACHE      = "${WORKSPACE}/.cache/go-build"
