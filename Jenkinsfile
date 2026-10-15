@@ -34,8 +34,8 @@ pipeline {
                 withSonarQubeEnv("${SONAR_SERVER}") {
                     sh '''
                         sonar-scanner \
-                          -Dsonar.projectKey=mi-proyecto-go \
-                          -Dsonar.projectName="Mi Proyecto Go" \
+                          -Dsonar.projectKey=pokedata \
+                          -Dsonar.projectName="PokeDATA" \
                           -Dsonar.sources=. \
                           -Dsonar.exclusions="**/*_test.go,**/vendor/**" \
                           -Dsonar.tests=. \
