@@ -110,25 +110,38 @@ func main() {
 		TLS:            tlsVal,
 	}
 
-	if err := run(*mode, *sources, *dbPath, *sqlPath, *refresh, *offline, *verbose, mysqlCfg, logf); err != nil {
+	opts := runOptions{
+		Mode:    *mode,
+		Sources: *sources,
+		DBPath:  *dbPath,
+		SQLPath: *sqlPath,
+		Refresh: *refresh,
+		Offline: *offline,
+		Verbose: *verbose,
+		MySQL:   mysqlCfg,
+	}
+	if err := run(opts, logf); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
 	}
 }
 
-func run(mode, sources, dbPath, sqlPath string, refresh, offline, verbose bool, mysqlCfg MySQLConfig, logf func(string, ...any)) (err error) {
-	modeLower := strings.ToLower(strings.TrimSpace(mode))
-	switch modeLower {
-	case "sqlite":
-		if dbPath == "" && sqlPath == "" {
-			return fmt.Errorf("en modo sqlite indica al menos -db o -sql")
-		}
-	case "mysql", "mariadb":
-		if mysqlCfg.Database == "" {
-			return fmt.Errorf("en modo mysql debes especificar el nombre de la base de datos (--database)")
-		}
-	default:
-		return fmt.Errorf("modo no válido: %q (usa 'sqlite' o 'mysql')", mode)
+// runOptions agrupa los parámetros de ejecución obtenidos de la línea de comandos.
+type runOptions struct {
+	Mode    string
+	Sources string
+	DBPath  string
+	SQLPath string
+	Refresh bool
+	Offline bool
+	Verbose bool
+	MySQL   MySQLConfig
+}
+
+func run(opts runOptions, logf func(string, ...any)) (err error) {
+	modeLower := strings.ToLower(strings.TrimSpace(opts.Mode))
+	if err := validateMode(modeLower, opts.Mode, opts.DBPath, opts.SQLPath, opts.MySQL); err != nil {
+		return err
 	}
 
 	// Los parsers señalan datos inesperados con panic: se convierten en error.
@@ -141,54 +154,87 @@ func run(mode, sources, dbPath, sqlPath string, refresh, offline, verbose bool, 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	if err := ensureSources(ctx, sources, refresh, offline, verbose, logf); err != nil {
+	if err := ensureSources(ctx, opts.Sources, opts.Refresh, opts.Offline, opts.Verbose, logf); err != nil {
 		return err
 	}
 
+	tables, err := buildTables(opts.Sources, logf)
+	if err != nil {
+		return err
+	}
+
+	if modeLower == "sqlite" {
+		err = writeSQLiteOutputs(opts.DBPath, opts.SQLPath, tables, logf)
+	} else {
+		err = writeMySQLOutputs(ctx, opts.SQLPath, opts.MySQL, tables, logf)
+	}
+	if err != nil {
+		return err
+	}
+
+	logf("listo en %s", time.Since(start).Round(time.Millisecond))
+	return nil
+}
+
+// validateMode comprueba que el modo es válido y que tiene los parámetros que necesita.
+func validateMode(modeLower, mode, dbPath, sqlPath string, mysqlCfg MySQLConfig) error {
+	switch modeLower {
+	case "sqlite":
+		if dbPath == "" && sqlPath == "" {
+			return fmt.Errorf("en modo sqlite indica al menos -db o -sql")
+		}
+	case "mysql", "mariadb":
+		if mysqlCfg.Database == "" {
+			return fmt.Errorf("en modo mysql debes especificar el nombre de la base de datos (--database)")
+		}
+	default:
+		return fmt.Errorf("modo no válido: %q (usa 'sqlite' o 'mysql')", mode)
+	}
+	return nil
+}
+
+// buildTables carga las fuentes y devuelve las tablas ordenadas listas para volcar.
+func buildTables(sources string, logf func(string, ...any)) ([]*Table, error) {
 	ds := NewDataset()
 	logf("cargando PokeAPI...")
 	L := loadPokeAPI(ds, &Src{dir: sources, cache: map[string]*CSV{}})
 	logf("procesando líderes de gimnasio...")
 	if err := buildGyms(ds, L, sources, logf); err != nil {
-		return err
+		return nil, err
 	}
 	tables, err := orderedTables(ds)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	total := 0
 	for _, t := range tables {
 		total += len(t.Rows)
 	}
 	logf("%d tablas, %d filas", len(tables), total)
+	return tables, nil
+}
 
-	switch modeLower {
-	case "sqlite":
-		if sqlPath != "" {
-			logf("escribiendo %s...", sqlPath)
-			if err := writeSQLiteFile(sqlPath, tables); err != nil {
-				return err
-			}
-		}
-		if dbPath != "" {
-			logf("escribiendo %s...", dbPath)
-			if err := writeSQLite(dbPath, tables, logf); err != nil {
-				return err
-			}
-		}
-	case "mysql", "mariadb":
-		if sqlPath != "" {
-			logf("escribiendo %s...", sqlPath)
-			if err := writeMySQLFile(sqlPath, tables); err != nil {
-				return err
-			}
-		}
-		logf("conectando y volcando a MySQL/MariaDB (%s:%d/%s)...", mysqlCfg.Host, mysqlCfg.Port, mysqlCfg.Database)
-		if err := writeMySQL(ctx, mysqlCfg, tables, logf); err != nil {
+func writeSQLiteOutputs(dbPath, sqlPath string, tables []*Table, logf func(string, ...any)) error {
+	if sqlPath != "" {
+		logf(WRITING, sqlPath)
+		if err := writeSQLiteFile(sqlPath, tables); err != nil {
 			return err
 		}
 	}
-
-	logf("listo en %s", time.Since(start).Round(time.Millisecond))
+	if dbPath != "" {
+		logf(WRITING, dbPath)
+		return writeSQLite(dbPath, tables, logf)
+	}
 	return nil
+}
+
+func writeMySQLOutputs(ctx context.Context, sqlPath string, mysqlCfg MySQLConfig, tables []*Table, logf func(string, ...any)) error {
+	if sqlPath != "" {
+		logf("escribiendo %s...", sqlPath)
+		if err := writeMySQLFile(sqlPath, tables); err != nil {
+			return err
+		}
+	}
+	logf("conectando y volcando a MySQL/MariaDB (%s:%d/%s)...", mysqlCfg.Host, mysqlCfg.Port, mysqlCfg.Database)
+	return writeMySQL(ctx, mysqlCfg, tables, logf)
 }

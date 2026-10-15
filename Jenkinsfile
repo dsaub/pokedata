@@ -37,9 +37,10 @@ pipeline {
                           -Dsonar.projectKey=pokedata \
                           -Dsonar.projectName="PokeDATA" \
                           -Dsonar.sources=. \
-                          -Dsonar.exclusions="**/*_test.go,**/vendor/**" \
+                          -Dsonar.exclusions="**/*_test.go,**/vendor/**,.go/**,.cache/**" \
                           -Dsonar.tests=. \
                           -Dsonar.test.inclusions="**/*_test.go" \
+                          -Dsonar.test.exclusions=".go/**,.cache/**" \
                           -Dsonar.go.coverage.reportPaths=coverage.out
                     '''
                 }

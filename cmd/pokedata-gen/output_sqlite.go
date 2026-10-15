@@ -91,7 +91,11 @@ func checkSQLiteViews(db *sql.DB) error {
 		}
 		names = append(names, n)
 	}
+	err = rows.Err()
 	rows.Close()
+	if err != nil {
+		return err
+	}
 	for _, n := range names {
 		var x any
 		err := db.QueryRow("SELECT 1 FROM `" + n + "` LIMIT 1").Scan(&x)
